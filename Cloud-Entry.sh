@@ -4,7 +4,7 @@ set -euo pipefail
     echo 'This entry point requires the native Mac Actions runner.' >&2;exit 1;
 }
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-phase="${1:?Specify preflight, prepare, engine, build or seal}"
+phase="${1:?Specify preflight, prepare, core, engine, build or seal}"
 run_private() {
     label="$1";shift
     if "$@" > "$RUNNER_TEMP/meridian-$label.log" 2>&1; then
@@ -31,6 +31,9 @@ case "$phase" in
         ;;
     engine)
         run_private engine python3 "$root/source/Tools/Cloud/Fetch-Mac-Engine.py"
+        ;;
+    core)
+        run_private core-tests bash "$root/source/Tools/Cloud/Mac-Core-Tests.sh"
         ;;
     build)
         run_private build bash "$root/source/Tools/Build-Mac-Dmg.sh"

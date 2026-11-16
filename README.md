@@ -9,6 +9,8 @@ GitHub documents standard runners in public repositories as free. Both jobs
 refuse to run when the workflow repository is private. There are no push,
 pull-request, scheduled or external event triggers: an owner must dispatch
 each preflight or build manually.
+The `core` mode compiles and runs the existing rules and economy test suites
+with native Apple Clang without downloading Unreal Engine.
 
 The private source checkout uses a deploy key limited to read access on that
 one source repository. Personal GitHub credentials and Epic account sessions

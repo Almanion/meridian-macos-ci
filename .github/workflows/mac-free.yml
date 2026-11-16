@@ -7,12 +7,12 @@ on:
         type: choice
         required: true
         default: preflight
-        options: [preflight, build]
+        options: [preflight, core, build]
       source_commit:
         description: Commit in the private Meridian source repository
         type: string
         required: true
-        default: 8056f72a77dd17d2e4e848a5c305c27ea4e62fcf
+        default: 8a54b356ae2c996bb79d1127c84b0af74aeade6c
 
 permissions:
   contents: read
@@ -33,7 +33,7 @@ jobs:
       - run: bash Cloud-Entry.sh preflight
 
   build:
-    if: inputs.mode == 'build' && github.event.repository.private == false
+    if: inputs.mode != 'preflight' && github.event.repository.private == false
     runs-on: macos-15-intel
     timeout-minutes: 180
     env:
@@ -55,10 +55,15 @@ jobs:
           path: source
           show-progress: false
       - name: Reserve disk for the native build
+        if: inputs.mode == 'build'
         run: bash Cloud-Entry.sh prepare
+      - name: Compile and run existing core suites with native Apple Clang
+        run: bash Cloud-Entry.sh core
       - name: Download and verify the licensed Mac engine
+        if: inputs.mode == 'build'
         run: bash Cloud-Entry.sh engine
       - name: Build and verify the native application and disk image
+        if: inputs.mode == 'build'
         run: bash Cloud-Entry.sh build
       - name: Encrypt the installer and diagnostic logs for the project owner
         if: always()
