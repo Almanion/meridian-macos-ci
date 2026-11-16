@@ -1,0 +1,74 @@
+name: Meridian native macOS build
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        required: true
+        default: preflight
+        options: [preflight, build]
+      source_commit:
+        description: Commit in the private Meridian source repository
+        type: string
+        required: true
+        default: 8056f72a77dd17d2e4e848a5c305c27ea4e62fcf
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meridian-native-macos
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: inputs.mode == 'preflight' && github.event.repository.private == false
+    runs-on: macos-15-intel
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: bash Cloud-Entry.sh preflight
+
+  build:
+    if: inputs.mode == 'build' && github.event.repository.private == false
+    runs-on: macos-15-intel
+    timeout-minutes: 180
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      MERIDIAN_ARCHITECTURES: x64+arm64
+      MERIDIAN_MAX_ACTIONS: '2'
+      UNREAL_MAC_DESCRIPTOR_B64: ${{ secrets.UNREAL_MAC_DESCRIPTOR_B64 }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Fetch the authorized private source snapshot
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: Almanion/meridian-cloud-build
+          ref: ${{ inputs.source_commit }}
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+          path: source
+          show-progress: false
+      - name: Reserve disk for the native build
+        run: bash Cloud-Entry.sh prepare
+      - name: Download and verify the licensed Mac engine
+        run: bash Cloud-Entry.sh engine
+      - name: Build and verify the native application and disk image
+        run: bash Cloud-Entry.sh build
+      - name: Encrypt the installer and diagnostic logs for the project owner
+        if: always()
+        run: bash Cloud-Entry.sh seal
+      - name: Save only the encrypted build result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Meridian-encrypted-${{ github.run_id }}
+          path: ${{ runner.temp }}/Meridian-${{ github.run_id }}.tar.cms
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
